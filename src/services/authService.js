@@ -1,4 +1,4 @@
-const firebaseDB = require('../config/firebase').firebaseDB; // Ensure firebaseDB is imported properly
+const firebaseDB = require('../config/firebase').firebaseDB;
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
@@ -46,8 +46,6 @@ class AuthService {
         error: error.message
       });
     }
-    // console.log(firebaseDB.collections.admins);
-    // console.log(firebaseDB);
   }
 
   async registerCustomer(req, res) {

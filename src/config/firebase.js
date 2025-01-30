@@ -146,6 +146,6 @@ const firebaseDB = {
 module.exports = {
   admin,
   db,
-  firebaseDB,  // Make sure you're exporting firebaseDB here
+  firebaseDB, 
   storage
 };
