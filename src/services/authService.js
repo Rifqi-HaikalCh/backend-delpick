@@ -4,15 +4,63 @@ const { v4: uuidv4 } = require('uuid');
 
 class AuthService {
   async registerAdmin(req, res) {
+    // try {
+    //   const { username, email, password, phone_number } = req.body;
+    //   const userId = uuidv4();
+  
+    //   if (!firebaseDB.collections.admins) {
+    //     throw new Error("Firestore collection 'admins' is not initialized properly.");
+    //   }
+  
+    //   await firebaseDB.createUser({
+    //     user_id: userId,
+    //     username,
+    //     email,
+    //     password,
+    //     phone_number,
+    //     role: 'admin'
+    //   });
+  
+    //   await firebaseDB.collections.admins.doc(userId).set({
+    //     admin_id: userId,
+    //     user_id: userId,
+    //     last_login: null
+    //   });
+  
+    //   const token = jwt.sign(
+    //     { userId, role: 'admin' },
+    //     process.env.JWT_SECRET,
+    //     { expiresIn: '24h' }
+    //   );
+  
+    //   res.status(201).json({
+    //     success: true,
+    //     message: 'Admin registered successfully',
+    //     token,
+    //     data: { userId, username, email, role: 'admin' }
+    //   });
+    // } catch (error) {
+    //   res.status(500).json({
+    //     success: false,
+    //     message: 'Error registering admin',
+    //     error: error.message
+    //   });
+    // }
+    // console.log(firebaseDB);
     try {
       const { username, email, password, phone_number } = req.body;
       const userId = uuidv4();
-  
-      if (!firebaseDB.collections.admins) {
-        throw new Error("Firestore collection 'admins' is not initialized properly.");
+
+      // Validasi input
+      if (!username || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields'
+        });
       }
-  
-      await firebaseDB.createUser({
+
+      // Create user in Firebase
+      const userRecord = await firebaseDB.createUser({
         user_id: userId,
         username,
         email,
@@ -20,27 +68,49 @@ class AuthService {
         phone_number,
         role: 'admin'
       });
-  
+
+      // Create admin document
       await firebaseDB.collections.admins.doc(userId).set({
         admin_id: userId,
         user_id: userId,
-        last_login: null
+        last_login: null,
+        created_at: firebaseDB.admin.firestore.FieldValue.serverTimestamp()
       });
-  
+
+      // Generate JWT
       const token = jwt.sign(
-        { userId, role: 'admin' },
+        { 
+          userId,
+          role: 'admin',
+          email: userRecord.email
+        },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
-  
+
+      // Response tanpa password
       res.status(201).json({
         success: true,
         message: 'Admin registered successfully',
         token,
-        data: { userId, username, email, role: 'admin' }
+        data: {
+          userId,
+          username,
+          email,
+          role: 'admin',
+          phone_number
+        }
       });
+
     } catch (error) {
-      res.status(500).json({
+      console.error('Registration Error:', {
+        error: error.message,
+        stack: error.stack,
+        body: req.body
+      });
+
+      const statusCode = error.code === 'auth/email-already-exists' ? 409 : 500;
+      res.status(statusCode).json({
         success: false,
         message: 'Error registering admin',
         error: error.message
