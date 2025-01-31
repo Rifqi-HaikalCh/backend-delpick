@@ -77,8 +77,58 @@ const hashPassword = async (req, res, next) => {
   }
 };
 
+// Middleware to check if the user is an admin
+const checkAdmin = (req, res, next) => {
+  try {
+    // Get the token from the Authorization header
+    const token = req.headers.authorization.split(' ')[1];
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if the user role is admin
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have the required permissions.'
+      });
+    }
+
+    // Attach the decoded user data to the request object for use in the controller
+    req.user = decoded;
+    next(); // Proceed to the next middleware or controller
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication failed: Invalid or expired token.'
+    });
+  }
+};
+
+const validateUpdateUserData = (req, res, next) => {
+  const { email, username } = req.body;
+
+  if (email && !/\S+@\S+\.\S+/.test(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid email format.'
+    });
+  }
+
+  if (username && username.length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username must be at least 3 characters long.'
+    });
+  }
+
+  next(); // Proceed to the next middleware or service
+};
+
 module.exports = {
   validateRegistrationData,
   checkEmailUnique,
-  hashPassword
+  hashPassword,
+  checkAdmin,
+  validateUpdateUserData
 };

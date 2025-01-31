@@ -63,6 +63,7 @@ const firebaseDB = {
       });
 // Kemudian simpan ke Firestore
       await collections.users.doc(userData.user_id).set({
+        user_id: userData.user_id,
         username: userData.username,
         email: userData.email,
         password: userData.password, 
@@ -167,13 +168,19 @@ const firebaseDB = {
 async getAllUsers() {
   try {
     const usersSnapshot = await collections.users.get();
-    const usersList = usersSnapshot.docs.map(doc => doc.data());
+    const usersList = usersSnapshot.docs.map(doc => {
+      return {
+        userId: doc.id,  // This is the document ID, which is considered the userId
+        ...doc.data()     // This will spread the remaining fields from the Firestore document
+      };
+    });
     return usersList;
   } catch (error) {
     console.error("Error getting all users:", error);
     throw error;
   }
 },
+
 
 //Menambahkan  metode login di firebaseDB
 async login(req, res) {
@@ -253,5 +260,6 @@ module.exports = {
   admin,
   db,
   firebaseDB, 
-  storage
+  storage,
+  
 };
