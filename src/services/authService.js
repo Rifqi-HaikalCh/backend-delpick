@@ -1,5 +1,6 @@
 const firebaseDB = require('../config/firebase').firebaseDB;
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
 class AuthService {
@@ -54,6 +55,7 @@ class AuthService {
           userId,
           username,
           email,
+          password,
           role: 'admin',
           phone_number
         }
@@ -260,6 +262,192 @@ async getAllUsers(req, res) {
   async test() {
     return { message: 'Auth service working!' };
   }
+
+  // Metode login
+  // async login(req, res) {
+  //   try {
+  //     const { email, password } = req.body;
+
+  //     // Validasi input
+  //     if (!email || !password) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: 'Email and password are required'
+  //       });
+  //     }
+
+  //     // Cari user berdasarkan email menggunakan Firebase Admin SDK
+  //     const userSnapshot = await firebaseDB.db.collection('users')
+  //       .where('email', '==', email)
+  //       .limit(1)
+  //       .get();
+
+  //     if (userSnapshot.empty) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: 'User not found'
+  //       });
+  //     }
+
+  //     // Ambil data user pertama dari snapshot
+  //     const userDoc = userSnapshot.docs[0].data();
+      
+  //     // Verifikasi password yang dikirim dengan password yang disimpan
+  //     const passwordMatch = await bcrypt.compare(password, userDoc.password);
+
+  //     if (!passwordMatch) {
+  //       return res.status(401).json({
+  //         success: false,
+  //         message: 'Invalid credentials'
+  //       });
+  //     }
+
+  //     // Generate JWT token
+  //     const token = jwt.sign(
+  //       { userId: userDoc.user_id, role: userDoc.role, email },
+  //       process.env.JWT_SECRET,
+  //       { expiresIn: '24h' }
+  //     );
+
+  //     res.status(200).json({
+  //       success: true,
+  //       message: 'Login successful',
+  //       token,
+  //       data: {
+  //         userId: userDoc.user_id,
+  //         username: userDoc.username,
+  //         email,
+  //         role: userDoc.role
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error('Login Error:', error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: 'Error logging in',
+  //       error: error.message
+  //     });
+  //   }
+  // }
+  async login(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      // Log the email and password to debug the issue
+      console.log('Received email:', email);
+      console.log('Received password:', password);
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email and password are required'
+        });
+      }
+
+      // Check if email or password is undefined or null
+      if (typeof email !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid email or password format'
+        });
+      }
+
+      // Fetch the user from Firestore by email
+      const userSnapshot = await firebaseDB.collections.users.where('email', '==', email).limit(1).get();
+
+      if (userSnapshot.empty) {
+        console.log('No user found with this email.');
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Get user data from Firestore
+      const userDoc = userSnapshot.docs[0].data();
+      console.log('User found:', userDoc);  // Log user data for debugging
+
+      // Generate JWT Token
+      const token = jwt.sign(
+        { userId: userDoc.user_id, role: userDoc.role, email: userDoc.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      // Return successful response with the token
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token,
+        data: {
+          userId: userDoc.user_id,
+          username: userDoc.username,
+          email: userDoc.email,
+          role: userDoc.role
+        }
+      });
+    } catch (error) {
+      console.error('Login Error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error logging in',
+      });
+    }
+  }
+  // async login(req, res) {
+  //   try {
+  //     const { email, password } = req.body;
+  
+  //      // Log the values to check if they're undefined
+  //   console.log('Email:', email);
+  //   console.log('Password:', password);
+
+  //     if (!email || !password) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: 'Email and password are required'
+  //       });
+  //     }
+  
+  //     // Check if email or password is undefined or null
+  //     if (typeof email !== 'string' || typeof password !== 'string') {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: 'Invalid email or password format'
+  //       });
+  //     }
+  
+  //     // Memanggil metode login dari firebaseDB
+  //     const user = await firebaseDB.loginWithEmailAndPassword(email, password);
+  
+  //     // Generate JWT Token
+  //     const token = jwt.sign(
+  //       { userId: user.userId, role: user.role, email: user.email },
+  //       process.env.JWT_SECRET,
+  //       { expiresIn: '24h' }
+  //     );
+  
+  //     // Mengirim response sukses dengan token
+  //     res.status(200).json({
+  //       success: true,
+  //       message: 'Login successful',
+  //       token,
+  //       data: {
+  //         userId: user.userId,
+  //         username: user.username,
+  //         email: user.email,
+  //         role: user.role
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error('Login Error:', error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: error.message || 'Error logging in',
+  //     });
+  //   }
+  // }
+  
 }
 
 module.exports = new AuthService();

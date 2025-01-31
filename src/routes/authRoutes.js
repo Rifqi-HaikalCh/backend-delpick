@@ -34,4 +34,14 @@ router.post('/register/store',
 // Menambahkan route baru untuk mengambil semua data user
 router.get('/users', authService.getAllUsers);
 
+router.post('/login', authService.login);
+
+router.post('/logout', (req, res) => {
+  // Hanya memberikan respons sukses
+  res.status(200).json({
+    success: true,
+    message: 'Logout successful'
+  });
+});
+
 module.exports = router;
