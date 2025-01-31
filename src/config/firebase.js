@@ -1,5 +1,7 @@
 const admin = require('firebase-admin');
 const dotenv = require('dotenv');
+const bcrypt = require('bcryptjs');
+
 
 dotenv.config();
 
@@ -50,6 +52,8 @@ const firebaseDB = {
   async createUser(userData) {
     try {
       // Pertama buat user di Firebase Authentication
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(userData.password, salt);
       const userRecord = await admin.auth().createUser({
         uid: userData.user_id,
         email: userData.email,
@@ -61,6 +65,7 @@ const firebaseDB = {
       await collections.users.doc(userData.user_id).set({
         username: userData.username,
         email: userData.email,
+        password: userData.password, 
         phone_number: userData.phone_number,
         role: userData.role,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -169,6 +174,78 @@ async getAllUsers() {
     throw error;
   }
 },
+
+//Menambahkan  metode login di firebaseDB
+async login(req, res) {
+  const { email, password } = req.body;
+
+  console.log('Entered email:', email);  // Check if email is coming through
+  console.log('Entered password:', password);  // Check if password is coming through
+
+  try {
+    const userSnapshot = await firebaseDB.collections.users.where('email', '==', email).limit(1).get();
+
+    if (userSnapshot.empty) {
+      console.log('User not found');
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userDoc = userSnapshot.docs[0].data();
+    console.log('User found:', userDoc);
+
+    // Verify password
+    try {
+      const passwordMatch = await bcrypt.compare(password, userDoc.password);
+      console.log('Password entered by user:', password);
+      console.log('Password match result:', passwordMatch);
+
+      if (!passwordMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      const token = jwt.sign(
+        { userId: userDoc.user_id, role: userDoc.role, email: userDoc.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token,
+        data: {
+          userId: userDoc.user_id,
+          username: userDoc.username,
+          email: userDoc.email,
+          role: userDoc.role
+        }
+      });
+
+    } catch (error) {
+      console.error('Error comparing password:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error comparing password',
+        error: error.message
+      });
+    }
+
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error logging in',
+      error: error.message
+    });
+  }
+},
+
 
 };
 
