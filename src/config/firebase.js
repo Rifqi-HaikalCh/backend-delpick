@@ -48,17 +48,6 @@ const firebaseDB = {
   db,
 
   async createUser(userData) {
-    // const userRef = collections.users.doc(userData.user_id.toString());
-    // await userRef.set({
-    //   username: userData.username,
-    //   email: userData.email,
-    //   password: userData.password,
-    //   phone_number: userData.phone_number,
-    //   role: userData.role,
-    //   created_at: admin.firestore.FieldValue.serverTimestamp(),
-    //   updated_at: admin.firestore.FieldValue.serverTimestamp(),
-    // });
-    // console.log("Collections initialized:", Object.keys(collections));
     try {
       // Pertama buat user di Firebase Authentication
       const userRecord = await admin.auth().createUser({
@@ -167,7 +156,20 @@ const firebaseDB = {
   async getOrder(orderId) {
     const orderDoc = await collections.orders.doc(orderId.toString()).get();
     return orderDoc.exists ? orderDoc.data() : null;
+  },
+
+// Menambahkan metode baru untuk mendapatkan semua data user
+async getAllUsers() {
+  try {
+    const usersSnapshot = await collections.users.get();
+    const usersList = usersSnapshot.docs.map(doc => doc.data());
+    return usersList;
+  } catch (error) {
+    console.error("Error getting all users:", error);
+    throw error;
   }
+},
+
 };
 
 module.exports = {

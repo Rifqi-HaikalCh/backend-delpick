@@ -4,49 +4,6 @@ const { v4: uuidv4 } = require('uuid');
 
 class AuthService {
   async registerAdmin(req, res) {
-    // try {
-    //   const { username, email, password, phone_number } = req.body;
-    //   const userId = uuidv4();
-  
-    //   if (!firebaseDB.collections.admins) {
-    //     throw new Error("Firestore collection 'admins' is not initialized properly.");
-    //   }
-  
-    //   await firebaseDB.createUser({
-    //     user_id: userId,
-    //     username,
-    //     email,
-    //     password,
-    //     phone_number,
-    //     role: 'admin'
-    //   });
-  
-    //   await firebaseDB.collections.admins.doc(userId).set({
-    //     admin_id: userId,
-    //     user_id: userId,
-    //     last_login: null
-    //   });
-  
-    //   const token = jwt.sign(
-    //     { userId, role: 'admin' },
-    //     process.env.JWT_SECRET,
-    //     { expiresIn: '24h' }
-    //   );
-  
-    //   res.status(201).json({
-    //     success: true,
-    //     message: 'Admin registered successfully',
-    //     token,
-    //     data: { userId, username, email, role: 'admin' }
-    //   });
-    // } catch (error) {
-    //   res.status(500).json({
-    //     success: false,
-    //     message: 'Error registering admin',
-    //     error: error.message
-    //   });
-    // }
-    // console.log(firebaseDB);
     try {
       const { username, email, password, phone_number } = req.body;
       const userId = uuidv4();
@@ -280,6 +237,25 @@ class AuthService {
       });
     }
   }
+
+ // Menambahkan metode baru untuk mendapatkan semua data user
+async getAllUsers(req, res) {
+  try {
+    const users = await firebaseDB.getAllUsers();
+    res.status(200).json({
+      success: true,
+      message: 'All users retrieved successfully',
+      data: users
+    });
+  } catch (error) {
+    console.error('Error retrieving users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving users',
+      error: error.message
+    });
+  }
+} 
 
   async test() {
     return { message: 'Auth service working!' };

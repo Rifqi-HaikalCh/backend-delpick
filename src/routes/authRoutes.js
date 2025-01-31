@@ -31,4 +31,7 @@ router.post('/register/store',
   authService.registerStore
 );
 
+// Menambahkan route baru untuk mengambil semua data user
+router.get('/users', authService.getAllUsers);
+
 module.exports = router;
