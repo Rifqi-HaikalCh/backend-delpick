@@ -3,6 +3,8 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+console.log('Firebase Project ID:',process.env.FIREBASE_PROJECT_ID);
+
 const serviceAccount = {
   type: "service_account",
   project_id: process.env.FIREBASE_PROJECT_ID,
@@ -42,19 +44,44 @@ const collections = {
 
 const firebaseDB = {
   collections,
+  admin,
+  db,
 
   async createUser(userData) {
-    const userRef = collections.users.doc(userData.user_id.toString());
-    await userRef.set({
-      username: userData.username,
-      email: userData.email,
-      password: userData.password,
-      phone_number: userData.phone_number,
-      role: userData.role,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-      updated_at: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    console.log("Collections initialized:", Object.keys(collections));
+    // const userRef = collections.users.doc(userData.user_id.toString());
+    // await userRef.set({
+    //   username: userData.username,
+    //   email: userData.email,
+    //   password: userData.password,
+    //   phone_number: userData.phone_number,
+    //   role: userData.role,
+    //   created_at: admin.firestore.FieldValue.serverTimestamp(),
+    //   updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    // });
+    // console.log("Collections initialized:", Object.keys(collections));
+    try {
+      // Pertama buat user di Firebase Authentication
+      const userRecord = await admin.auth().createUser({
+        uid: userData.user_id,
+        email: userData.email,
+        password: userData.password,
+        displayName: userData.username,
+        phoneNumber: userData.phone_number
+      });
+// Kemudian simpan ke Firestore
+      await collections.users.doc(userData.user_id).set({
+        username: userData.username,
+        email: userData.email,
+        phone_number: userData.phone_number,
+        role: userData.role,
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return userRecord;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   },
 
   async createStore(storeData) {
