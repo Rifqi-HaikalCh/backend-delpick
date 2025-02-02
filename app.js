@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require('dotenv');
 const authRoutes = require('./src/routes/authRoutes');
+const productRoutes = require('./src/routes/productRoutes');
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({
