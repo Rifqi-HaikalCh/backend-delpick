@@ -125,10 +125,46 @@ const validateUpdateUserData = (req, res, next) => {
   next(); // Proceed to the next middleware or service
 };
 
+// Tambahkan fungsi authenticateToken
+const authenticateToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token is missing'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token'
+    });
+  }
+};
+
+// Tambahkan fungsi isStore
+const isStore = (req, res, next) => {
+  if (req.user.role !== 'store') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Store privileges required.'
+    });
+  }
+  next();
+};
+
 module.exports = {
   validateRegistrationData,
   checkEmailUnique,
   hashPassword,
   checkAdmin,
-  validateUpdateUserData
+  validateUpdateUserData,
+  authenticateToken,
+  isStore
 };

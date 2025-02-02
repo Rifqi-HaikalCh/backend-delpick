@@ -261,5 +261,4 @@ module.exports = {
   db,
   firebaseDB, 
   storage,
-  
-};
+  };
