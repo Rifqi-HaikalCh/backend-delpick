@@ -4,6 +4,8 @@ const dotenv = require('dotenv');
 const authRoutes = require('./src/routes/authRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
+const reportRoutes = require('./src/routes/reportRoutes');
+const ratingRoutes = require('./src/routes/ratingRoutes');
 
 dotenv.config();
 
@@ -21,6 +23,8 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('api/reports', reportRoutes);
+app.use('api/ratings', ratingRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({

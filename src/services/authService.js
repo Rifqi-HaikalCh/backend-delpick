@@ -9,7 +9,6 @@ class AuthService {
       const { username, email, password, phone_number } = req.body;
       const userId = uuidv4();
 
-      // Validasi input
       if (!username || !email || !password) {
         return res.status(400).json({
           success: false,
@@ -17,7 +16,6 @@ class AuthService {
         });
       }
 
-      // Create user in Firebase
       const userRecord = await firebaseDB.createUser({
         user_id: userId,
         username,
@@ -27,7 +25,6 @@ class AuthService {
         role: 'admin'
       });
 
-      // Create admin document
       await firebaseDB.collections.admins.doc(userId).set({
         admin_id: userId,
         user_id: userId,
@@ -35,7 +32,6 @@ class AuthService {
         created_at: firebaseDB.admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Generate JWT
       const token = jwt.sign(
         { 
           userId,
@@ -46,7 +42,6 @@ class AuthService {
         { expiresIn: '24h' }
       );
 
-      // Response tanpa password
       res.status(201).json({
         success: true,
         message: 'Admin registered successfully',

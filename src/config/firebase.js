@@ -40,8 +40,10 @@ const collections = {
   products: db.collection('products'),
   orders: db.collection('orders'),
   orderItems: db.collection('orderItems'),
-  userReports: db.collection('userReports'),
-  deliveryTracking: db.collection('deliveryTracking')
+  reports: db.collection('reports'),
+  deliveryTracking: db.collection('deliveryTracking'),
+  driverRatings: db.collection('driverRatings'),
+  storeRatings: db.collection('storeRatings')
 };
 
 const firebaseDB = {
@@ -51,7 +53,6 @@ const firebaseDB = {
 
   async createUser(userData) {
     try {
-      // Pertama buat user di Firebase Authentication
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(userData.password, salt);
       const userRecord = await admin.auth().createUser({
@@ -61,7 +62,6 @@ const firebaseDB = {
         displayName: userData.username,
         phoneNumber: userData.phone_number
       });
-// Kemudian simpan ke Firestore
       await collections.users.doc(userData.user_id).set({
         user_id: userData.user_id,
         username: userData.username,
@@ -91,6 +91,98 @@ const firebaseDB = {
       rating: storeData.rating,
       is_active: storeData.is_active
     });
+  },
+
+  async createDriverRating(driverId, rating, orderId) {
+    try {
+      const ratingDoc = await collections.driverRatings.doc(driverId).get();
+      let ratingData = { ratings: [], totalRatings: 0, averageRating: 0 };
+
+      if (ratingDoc.exists) {
+        ratingData = ratingDoc.data();
+      }
+
+      ratingData.ratings.push({ orderId, rating });
+      ratingData.totalRatings = ratingData.ratings.length;
+      ratingData.averageRating = ratingData.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingData.totalRatings;
+
+      await collections.driverRatings.doc(driverId).set(ratingData);
+      await this.updateDriverRating(driverId, ratingData.averageRating);
+    } catch (error) {
+      console.error("Error creating driver rating:", error);
+      throw error;
+    }
+  },
+
+  async createStoreRating(storeId, rating, orderId) {
+    try {
+      const ratingDoc = await collections.storeRatings.doc(storeId).get();
+      let ratingData = { ratings: [], totalRatings: 0, averageRating: 0 };
+
+      if (ratingDoc.exists) {
+        ratingData = ratingDoc.data();
+      }
+
+      ratingData.ratings.push({ orderId, rating });
+      ratingData.totalRatings = ratingData.ratings.length;
+      ratingData.averageRating = ratingData.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingData.totalRatings;
+
+      await collections.storeRatings.doc(storeId).set(ratingData);
+      await this.updateStoreRating(storeId, ratingData.averageRating);
+    } catch (error) {
+      console.error("Error creating store rating:", error);
+      throw error;
+    }
+  },
+
+  async getDriverRating(driverId) {
+    try {
+      const ratingDoc = await collections.driverRatings.doc(driverId).get();
+      if (ratingDoc.exists) {
+        return ratingDoc.data();
+      } else {
+        return { ratings: [], totalRatings: 0, averageRating: 0 };
+      }
+    } catch (error) {
+      console.error("Error getting driver rating:", error);
+      throw error;
+    }
+  },
+
+  async getStoreRating(storeId) {
+    try {
+      const ratingDoc = await collections.storeRatings.doc(storeId).get();
+      if (ratingDoc.exists) {
+        return ratingDoc.data();
+      } else {
+        return { ratings: [], totalRatings: 0, averageRating: 0 };
+      }
+    } catch (error) {
+      console.error("Error getting store rating:", error);
+      throw error;
+    }
+  },
+
+  async updateStoreRating(storeId, averageRating) {
+    try {
+      await collections.stores.doc(storeId).update({
+        rating: averageRating
+      });
+    } catch (error) {
+      console.error("Error updating store rating:", error);
+      throw error;
+    }
+  },
+
+  async updateDriverRating(driverId, averageRating) {
+    try {
+      await collections.drivers.doc(driverId).update({
+        rating: averageRating
+      });
+    } catch (error) {
+      console.error("Error updating driver rating:", error);
+      throw error;
+    }
   },
 
   async createProduct(productData) {
@@ -139,14 +231,27 @@ const firebaseDB = {
     });
   },
 
-  async createUserReport(reportData) {
-    const reportRef = collections.userReports.doc(reportData.report_id.toString());
-    await reportRef.set({
-      user_id: reportData.user_id,
-      description: reportData.description,
-      status: reportData.status,
-      created_at: admin.firestore.FieldValue.serverTimestamp()
-    });
+  async createReport(reportData) {
+    try {
+      const reportId = Date.now().toString();
+      const newReport = {
+        report_id: reportId,
+        reporter_id: reportData.reporter_id,
+        reporter_email: reportData.reporter_email,
+        reporter_phone: reportData.reporter_phone,
+        reported_type: reportData.reported_type,
+        reported_id: reportData.reported_id,
+        description: reportData.description,
+        status: 'PENDING',
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp()
+      };
+      await collections.reports.doc(reportId).set(newReport);
+      return newReport;
+    } catch (error) {
+      console.error("Error creating report:", error);
+      throw error;
+    }
   },
 
   async getUser(userId) {
@@ -164,8 +269,8 @@ const firebaseDB = {
     return orderDoc.exists ? orderDoc.data() : null;
   },
 
-// Menambahkan metode baru untuk mendapatkan semua data user
-async getAllUsers() {
+
+  async getAllUsers() {
   try {
     const usersSnapshot = await collections.users.get();
     const usersList = usersSnapshot.docs.map(doc => {
@@ -182,13 +287,11 @@ async getAllUsers() {
 },
 
 
-//Menambahkan  metode login di firebaseDB
 async login(req, res) {
   const { email, password } = req.body;
 
-  console.log('Entered email:', email);  // Check if email is coming through
-  console.log('Entered password:', password);  // Check if password is coming through
-
+  console.log('Entered email:', email);
+  console.log('Entered password:', password);
   try {
     const userSnapshot = await firebaseDB.collections.users.where('email', '==', email).limit(1).get();
 
@@ -203,7 +306,6 @@ async login(req, res) {
     const userDoc = userSnapshot.docs[0].data();
     console.log('User found:', userDoc);
 
-    // Verify password
     try {
       const passwordMatch = await bcrypt.compare(password, userDoc.password);
       console.log('Password entered by user:', password);
@@ -253,6 +355,65 @@ async login(req, res) {
   }
 },
 
+async updateReport(reportId, updateData) {
+  try {
+    await collections.reports.doc(reportId).update({
+      ...updateData,
+      updated_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { report_id: reportId, ...updateData };
+  } catch (error) {
+    console.error("Error updating report:", error);
+    throw error;
+  }
+},
+
+async getReportById(reportId, userId, role) {
+  try {
+    const reportDoc = await collections.reports.doc(reportId).get();
+    
+    if (!reportDoc.exists) {
+      throw new Error('Report not found');
+    }
+
+    const reportData = reportDoc.data();
+
+    if (role !== 'admin') {
+      if (reportData.reporter_id !== userId) {
+        throw new Error('Unauthorized to view this report');
+      }
+    }
+
+    return reportData;
+  } catch (error) {
+    console.error("Error getting report:", error);
+    throw error;
+  }
+},
+
+async getAllReports(userId, role) {
+  try {
+    let reportsQuery = collections.reports;
+
+    if (role === 'admin') {
+      const reportsSnapshot = await reportsQuery.get();
+      return reportsSnapshot.docs.map(doc => ({
+        report_id: doc.id,
+        ...doc.data()
+      }));
+    } else {
+      reportsQuery = reportsQuery.where('reporter_id', '==', userId);
+      const reportsSnapshot = await reportsQuery.get();
+      return reportsSnapshot.docs.map(doc => ({
+        report_id: doc.id,
+        ...doc.data()
+      }));
+    }
+  } catch (error) {
+    console.error("Error getting reports:", error);
+    throw error;
+  }
+},
 
 };
 
